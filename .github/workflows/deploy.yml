@@ -19,16 +19,21 @@ jobs:
         node-version: '22'
         cache: 'npm'
         
-        - name: Install dependencies
+    - name: Install dependencies
       run: npm install
 
     - name: Build application
       run: npm run build
       env:
         NODE_OPTIONS: --max-old-space-size=4096
+        VITE_SUPABASE_URL: https://dummy.supabase.co
+        VITE_SUPABASE_ANON_KEY: dummy-anon-key
+        VITE_OPENAI_API_KEY: dummy-key
+        VITE_INSTAGRAM_CLIENT_ID: dummy-instagram-id
+        VITE_TIKTOK_CLIENT_KEY: dummy-tiktok-key
         
     - name: Deploy to Vercel (Production)
-      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && secrets.VERCEL_TOKEN != ''
       uses: amondnet/vercel-action@v25
       with:
         vercel-token: ${{ secrets.VERCEL_TOKEN }}
@@ -37,7 +42,7 @@ jobs:
         vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
         
     - name: Deploy to Vercel (Preview)
-      if: github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master'
+      if: (github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master') && secrets.VERCEL_TOKEN != ''
       uses: amondnet/vercel-action@v25
       with:
         vercel-token: ${{ secrets.VERCEL_TOKEN }}
@@ -46,7 +51,7 @@ jobs:
         vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
         
     - name: Comment PR with deployment URL
-      if: github.event_name == 'pull_request'
+      if: github.event_name == 'pull_request' && secrets.VERCEL_TOKEN != ''
       uses: actions/github-script@v7
       with:
         script: |
@@ -62,7 +67,28 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `🚀 **Preview Deployment Ready!**
-              \n\n📱 **URL:** ${deploymentUrl}
-              \n\nThis preview will be automatically updated when you push new commits to this PR.`
+
+              📱 **URL:** ${deploymentUrl}
+
+              This preview will be automatically updated when you push new commits to this PR.`
             });
           }
+          
+    - name: Build Success Notification
+      if: github.event_name == 'pull_request' && secrets.VERCEL_TOKEN == ''
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `✅ **Build Successful!**
+
+            The application has been built successfully. To enable automatic deployments, configure Vercel secrets in the repository settings.
+
+            **Required secrets:**
+            - \`VERCEL_TOKEN\`
+            - \`VERCEL_ORG_ID\`
+            - \`VERCEL_PROJECT_ID\``
+          });
