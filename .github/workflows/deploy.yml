@@ -26,6 +26,11 @@ jobs:
       run: npm run build
       env:
         NODE_OPTIONS: --max-old-space-size=4096
+        VITE_SUPABASE_URL: https://dummy.supabase.co
+        VITE_SUPABASE_ANON_KEY: dummy-anon-key
+        VITE_OPENAI_API_KEY: dummy-key
+        VITE_INSTAGRAM_CLIENT_ID: dummy-instagram-id
+        VITE_TIKTOK_CLIENT_KEY: dummy-tiktok-key
         
     - name: Deploy to Vercel (Production)
       if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && secrets.VERCEL_TOKEN != ''
@@ -62,8 +67,10 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `🚀 **Preview Deployment Ready!**
-              \n\n📱 **URL:** ${deploymentUrl}
-              \n\nThis preview will be automatically updated when you push new commits to this PR.`
+
+              📱 **URL:** ${deploymentUrl}
+
+              This preview will be automatically updated when you push new commits to this PR.`
             });
           }
           
@@ -77,9 +84,11 @@ jobs:
             owner: context.repo.owner,
             repo: context.repo.repo,
             body: `✅ **Build Successful!**
-            \n\nThe application has been built successfully. To enable automatic deployments, configure Vercel secrets in the repository settings.
-            \n\n**Required secrets:**
-            \n- \`VERCEL_TOKEN\`
-            \n- \`VERCEL_ORG_ID\`
-            \n- \`VERCEL_PROJECT_ID\``
+
+            The application has been built successfully. To enable automatic deployments, configure Vercel secrets in the repository settings.
+
+            **Required secrets:**
+            - \`VERCEL_TOKEN\`
+            - \`VERCEL_ORG_ID\`
+            - \`VERCEL_PROJECT_ID\``
           });
