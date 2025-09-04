@@ -1,29 +1,89 @@
 import React, { useState } from 'react'
-import { Download, Share, Heart, MessageCircle } from 'lucide-react'
+import { Copy, Download, Share2, Heart, MessageCircle, BarChart3, ExternalLink, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
+import { socialMediaService } from '../services/socialMediaService'
 
-const CreativeCard = ({ variation, index }) => {
+const CreativeCard = ({ variation, index, onPost }) => {
+  const [isLiked, setIsLiked] = useState(false)
+  const [showStats, setShowStats] = useState(false)
+  const [showPostModal, setShowPostModal] = useState(false)
   const [isPosting, setIsPosting] = useState(false)
+  const [postResult, setPostResult] = useState(null)
+  const [showOptimizationTips, setShowOptimizationTips] = useState(false)
 
-  const handlePost = async (platform) => {
-    setIsPosting(true)
-    // Simulate posting delay
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    setIsPosting(false)
-    alert(`Posted to ${platform} successfully!`)
+  const handleCopyText = () => {
+    navigator.clipboard.writeText(variation.adCopy)
+    // You could add a toast notification here
   }
 
   const handleDownload = () => {
-    // Create a download link for the image
+    // In a real app, this would download the image
     const link = document.createElement('a')
     link.href = variation.imageUrl
-    link.download = `ad-variation-${index + 1}.jpg`
+    link.download = `adspark-creative-${variation.id}.jpg`
     link.click()
   }
 
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: variation.headline,
+        text: variation.adCopy,
+        url: variation.imageUrl
+      })
+    } else {
+      // Fallback to copying URL
+      navigator.clipboard.writeText(variation.imageUrl)
+    }
+  }
+
+  const handlePostToSocial = async (platform) => {
+    setIsPosting(true)
+    setPostResult(null)
+    
+    try {
+      // In a real app, you'd have stored access tokens
+      const mockAccessToken = 'mock_token_' + platform
+      
+      const result = await socialMediaService.postCreative(
+        variation,
+        platform,
+        mockAccessToken
+      )
+      
+      setPostResult({
+        success: true,
+        platform,
+        postUrl: result.postUrl,
+        message: `Successfully posted to ${platform}!`
+      })
+      
+      if (onPost) {
+        onPost(variation, platform, result)
+      }
+    } catch (error) {
+      setPostResult({
+        success: false,
+        platform,
+        message: error.message || `Failed to post to ${platform}`
+      })
+    } finally {
+      setIsPosting(false)
+    }
+  }
+
+  const mockStats = {
+    likes: Math.floor(Math.random() * 1000) + 100,
+    comments: Math.floor(Math.random() * 50) + 10,
+    shares: Math.floor(Math.random() * 200) + 20,
+    ctr: (Math.random() * 5 + 1).toFixed(2) + '%'
+  }
+
+  const availablePlatforms = socialMediaService.getAvailablePlatforms().filter(p => p.supported)
+
   return (
-    <div className="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-all duration-300">
+    <div className="bg-white/5 backdrop-blur-sm rounded-lg overflow-hidden hover:bg-white/10 transition-all duration-300 group">
       {/* Image */}
-      <div className="aspect-square rounded-lg overflow-hidden mb-4 bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
+      <div className="relative aspect-square">
         {variation.imageUrl ? (
           <img 
             src={variation.imageUrl} 
@@ -31,66 +91,228 @@ const CreativeCard = ({ variation, index }) => {
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="text-center text-white">
-            <div className="text-6xl font-bold mb-2">{index + 1}</div>
-            <div className="text-sm opacity-75">AI Generated Creative</div>
+          <div className="w-full h-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
+            <div className="text-center text-white">
+              <div className="text-6xl font-bold mb-2">{index + 1}</div>
+              <div className="text-sm opacity-75">AI Generated Creative</div>
+            </div>
+          </div>
+        )}
+        
+        {/* Overlay with actions */}
+        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+          <div className="flex space-x-3">
+            <button
+              onClick={handleCopyText}
+              className="bg-white/20 backdrop-blur-sm p-2 rounded-full hover:bg-white/30 transition-colors"
+              title="Copy text"
+            >
+              <Copy size={18} className="text-white" />
+            </button>
+            <button
+              onClick={handleDownload}
+              className="bg-white/20 backdrop-blur-sm p-2 rounded-full hover:bg-white/30 transition-colors"
+              title="Download"
+            >
+              <Download size={18} className="text-white" />
+            </button>
+            <button
+              onClick={handleShare}
+              className="bg-white/20 backdrop-blur-sm p-2 rounded-full hover:bg-white/30 transition-colors"
+              title="Share"
+            >
+              <Share2 size={18} className="text-white" />
+            </button>
+          </div>
+        </div>
+
+        {/* Platform badge */}
+        <div className="absolute top-2 left-2">
+          <span className="bg-accent text-black text-xs font-semibold px-2 py-1 rounded-full">
+            {variation.platform}
+          </span>
+        </div>
+
+        {/* Style badge */}
+        <div className="absolute top-2 right-2">
+          <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-medium px-2 py-1 rounded-full">
+            {variation.style}
+          </span>
+        </div>
+
+        {/* Performance Score */}
+        {variation.performanceScore && (
+          <div className="absolute bottom-2 left-2">
+            <span className="bg-green-500/80 text-white text-xs font-semibold px-2 py-1 rounded-full">
+              {variation.performanceScore}% Score
+            </span>
           </div>
         )}
       </div>
 
-      {/* Ad Copy */}
-      <div className="mb-4">
-        <h3 className="text-white font-semibold mb-2">
-          {variation.headline || `Creative Variation ${index + 1}`}
+      {/* Content */}
+      <div className="p-4">
+        {/* Headline */}
+        <h3 className="text-white font-semibold mb-2 line-clamp-2">
+          {variation.headline}
         </h3>
-        <p className="text-white/70 text-sm line-clamp-3">
-          {variation.adCopy || "🚀 Transform your style with our amazing product! Perfect for modern lifestyle. Get yours today and experience the difference. Limited time offer - don't miss out! #StyleGoals #Innovation"}
+
+        {/* Ad Copy */}
+        <p className="text-white/70 text-sm mb-4 line-clamp-3">
+          {variation.adCopy}
         </p>
-      </div>
 
-      {/* Platform & Style */}
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-xs px-2 py-1 bg-accent/20 text-accent rounded-full">
-          {variation.platform || 'Instagram'}
-        </span>
-        <span className="text-xs text-white/60">
-          {variation.style || 'Trendy'}
-        </span>
-      </div>
+        {/* Optimization Tips Toggle */}
+        {variation.optimizationTips && (
+          <button
+            onClick={() => setShowOptimizationTips(!showOptimizationTips)}
+            className="text-accent text-sm hover:text-accent/80 transition-colors mb-3"
+          >
+            {showOptimizationTips ? 'Hide' : 'Show'} Optimization Tips
+          </button>
+        )}
 
-      {/* Engagement Metrics */}
-      <div className="flex items-center space-x-4 mb-4 text-white/60">
-        <div className="flex items-center space-x-1">
-          <Heart className="w-4 h-4" />
-          <span className="text-xs">{Math.floor(Math.random() * 1000) + 100}</span>
-        </div>
-        <div className="flex items-center space-x-1">
-          <MessageCircle className="w-4 h-4" />
-          <span className="text-xs">{Math.floor(Math.random() * 50) + 10}</span>
-        </div>
-        <div className="flex items-center space-x-1">
-          <Share className="w-4 h-4" />
-          <span className="text-xs">{Math.floor(Math.random() * 25) + 5}</span>
-        </div>
-      </div>
+        {/* Optimization Tips */}
+        {showOptimizationTips && variation.optimizationTips && (
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-4">
+            <h4 className="text-blue-200 font-medium text-sm mb-2">💡 Optimization Tips</h4>
+            <ul className="text-blue-100 text-xs space-y-1">
+              {variation.optimizationTips.map((tip, i) => (
+                <li key={i} className="flex items-start">
+                  <span className="text-blue-400 mr-1">•</span>
+                  {tip}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
-      {/* Actions */}
-      <div className="space-y-2">
-        <button
-          onClick={() => handlePost(variation.platform || 'Instagram')}
-          disabled={isPosting}
-          className="w-full bg-accent text-black px-4 py-2 rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50"
+        {/* Engagement Stats */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-4 text-white/60 text-sm">
+            <button 
+              onClick={() => setIsLiked(!isLiked)}
+              className={`flex items-center space-x-1 hover:text-red-400 transition-colors ${isLiked ? 'text-red-400' : ''}`}
+            >
+              <Heart size={16} fill={isLiked ? 'currentColor' : 'none'} />
+              <span>{mockStats.likes}</span>
+            </button>
+            <div className="flex items-center space-x-1">
+              <MessageCircle size={16} />
+              <span>{mockStats.comments}</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Share2 size={16} />
+              <span>{mockStats.shares}</span>
+            </div>
+          </div>
+          
+          <button
+            onClick={() => setShowStats(!showStats)}
+            className="text-accent hover:text-accent/80 transition-colors"
+          >
+            <BarChart3 size={16} />
+          </button>
+        </div>
+
+        {/* Performance Stats (Expandable) */}
+        {showStats && (
+          <div className="bg-white/5 rounded-lg p-3 mb-4">
+            <h4 className="text-white font-medium text-sm mb-2">Performance Metrics</h4>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="text-white/60">
+                <span className="block">CTR</span>
+                <span className="text-accent font-semibold">{mockStats.ctr}</span>
+              </div>
+              <div className="text-white/60">
+                <span className="block">Engagement</span>
+                <span className="text-accent font-semibold">{(Math.random() * 10 + 2).toFixed(1)}%</span>
+              </div>
+              <div className="text-white/60">
+                <span className="block">Performance</span>
+                <span className="text-accent font-semibold">{variation.performanceScore || 85}%</span>
+              </div>
+              <div className="text-white/60">
+                <span className="block">Platform</span>
+                <span className="text-accent font-semibold">{variation.platform}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Post Result */}
+        {postResult && (
+          <div className={`rounded-lg p-3 mb-4 ${postResult.success ? 'bg-green-500/20 border border-green-500/30' : 'bg-red-500/20 border border-red-500/30'}`}>
+            <div className="flex items-center">
+              {postResult.success ? (
+                <CheckCircle size={16} className="text-green-400 mr-2" />
+              ) : (
+                <AlertCircle size={16} className="text-red-400 mr-2" />
+              )}
+              <p className={`text-sm ${postResult.success ? 'text-green-200' : 'text-red-200'}`}>
+                {postResult.message}
+              </p>
+            </div>
+            {postResult.success && postResult.postUrl && (
+              <a
+                href={postResult.postUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-green-300 hover:text-green-200 text-sm flex items-center mt-2"
+              >
+                View Post <ExternalLink size={14} className="ml-1" />
+              </a>
+            )}
+          </div>
+        )}
+
+        {/* Action Button */}
+        <button 
+          onClick={() => setShowPostModal(true)}
+          className="w-full bg-accent text-black font-semibold py-2 rounded-lg hover:bg-accent/90 transition-colors"
         >
-          {isPosting ? 'Posting...' : `Post to ${variation.platform || 'Instagram'}`}
-        </button>
-        <button
-          onClick={handleDownload}
-          className="w-full bg-white/10 text-white px-4 py-2 rounded-lg font-medium hover:bg-white/20 transition-colors flex items-center justify-center space-x-2"
-        >
-          <Download className="w-4 h-4" />
-          <span>Download</span>
+          Post to Social Media
         </button>
       </div>
+
+      {/* Post Modal */}
+      {showPostModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-card max-w-md w-full p-6 rounded-xl">
+            <h3 className="text-xl font-bold text-white mb-4">Post to Social Media</h3>
+            
+            <div className="space-y-3">
+              {availablePlatforms.map((platform) => (
+                <button
+                  key={platform.id}
+                  onClick={() => handlePostToSocial(platform.id)}
+                  disabled={isPosting}
+                  className="w-full flex items-center justify-between p-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <div className="flex items-center">
+                    <span className="text-2xl mr-3">{platform.icon}</span>
+                    <span className="text-white font-medium">{platform.name}</span>
+                  </div>
+                  {isPosting ? (
+                    <Loader2 className="animate-spin text-white" size={18} />
+                  ) : (
+                    <ExternalLink className="text-white/60" size={18} />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => setShowPostModal(false)}
+                className="flex-1 bg-white/10 text-white py-2 rounded-lg hover:bg-white/20 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

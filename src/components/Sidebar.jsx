@@ -1,13 +1,14 @@
 import React from 'react'
-import { Home, Zap, BarChart3, Settings, HelpCircle } from 'lucide-react'
+import { Home, Zap, BarChart3, Settings, HelpCircle, TestTube, Lock } from 'lucide-react'
 
-const Sidebar = ({ currentView, setCurrentView }) => {
+const Sidebar = ({ currentView, setCurrentView, isAuthenticated }) => {
   const menuItems = [
-    { id: 'dashboard', icon: Home, label: 'Dashboard' },
-    { id: 'generator', icon: Zap, label: 'AI Generator' },
-    { id: 'analytics', icon: BarChart3, label: 'Analytics' },
-    { id: 'settings', icon: Settings, label: 'Settings' },
-    { id: 'help', icon: HelpCircle, label: 'Help' }
+    { id: 'dashboard', icon: Home, label: 'Dashboard', requiresAuth: false },
+    { id: 'generator', icon: Zap, label: 'AI Generator', requiresAuth: false },
+    { id: 'testing', icon: TestTube, label: 'A/B Testing', requiresAuth: true },
+    { id: 'analytics', icon: BarChart3, label: 'Analytics', requiresAuth: true },
+    { id: 'settings', icon: Settings, label: 'Settings', requiresAuth: true },
+    { id: 'help', icon: HelpCircle, label: 'Help', requiresAuth: false }
   ]
 
   return (
@@ -29,19 +30,26 @@ const Sidebar = ({ currentView, setCurrentView }) => {
           {menuItems.map((item) => {
             const Icon = item.icon
             const isActive = currentView === item.id
+            const isLocked = item.requiresAuth && !isAuthenticated
             
             return (
               <li key={item.id}>
                 <button
                   onClick={() => setCurrentView(item.id)}
-                  className={`w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                  disabled={isLocked}
+                  className={`w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 relative ${
                     isActive 
                       ? 'bg-accent/20 text-accent border border-accent/30' 
+                      : isLocked
+                      ? 'text-white/40 cursor-not-allowed'
                       : 'text-white/70 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   <span className="ml-3 hidden sm:block">{item.label}</span>
+                  {isLocked && (
+                    <Lock className="w-4 h-4 ml-auto hidden sm:block text-white/40" />
+                  )}
                 </button>
               </li>
             )
@@ -49,15 +57,27 @@ const Sidebar = ({ currentView, setCurrentView }) => {
         </ul>
       </nav>
 
-      {/* Upgrade Prompt */}
+      {/* Auth Status / Upgrade Prompt */}
       <div className="hidden sm:block p-4 border-t border-white/20">
-        <div className="glass-card p-4 rounded-lg">
-          <h3 className="font-semibold text-sm text-white mb-2">Upgrade to Pro</h3>
-          <p className="text-white/60 text-xs mb-3">Unlock unlimited generations</p>
-          <button className="w-full bg-accent text-black px-3 py-2 rounded-md text-sm font-medium hover:bg-accent/90 transition-colors">
-            Upgrade Now
-          </button>
-        </div>
+        {!isAuthenticated ? (
+          <div className="glass-card p-4 rounded-lg">
+            <h3 className="font-semibold text-sm text-white mb-2">🔒 Sign Up to Unlock</h3>
+            <p className="text-white/60 text-xs mb-3">A/B Testing, Analytics & More</p>
+            <div className="text-white/50 text-xs space-y-1 mb-3">
+              <div>• Unlimited generations</div>
+              <div>• Social media posting</div>
+              <div>• Performance tracking</div>
+            </div>
+          </div>
+        ) : (
+          <div className="glass-card p-4 rounded-lg">
+            <h3 className="font-semibold text-sm text-white mb-2">✅ Authenticated</h3>
+            <p className="text-white/60 text-xs mb-3">All features unlocked</p>
+            <button className="w-full bg-accent text-black px-3 py-2 rounded-md text-sm font-medium hover:bg-accent/90 transition-colors">
+              Upgrade to Pro
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
